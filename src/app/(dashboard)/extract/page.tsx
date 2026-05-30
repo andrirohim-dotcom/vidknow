@@ -69,12 +69,23 @@ export default function ExtractPage() {
             <p className="text-green-700 mb-4">
               Your knowledge has been extracted successfully.
             </p>
-            <a
-              href={`/knowledge/${extractionId}`}
-              className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-            >
-              View Report
-            </a>
+            <div className="flex gap-4">
+              <a
+                href={`/knowledge/${extractionId}`}
+                className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+              >
+                View Report
+              </a>
+              <button
+                onClick={() => {
+                  setExtractionId(null);
+                  setLocalError(null);
+                }}
+                className="inline-block bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+              >
+                Extract Another
+              </button>
+            </div>
           </div>
         )}
       </div>

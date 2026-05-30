@@ -111,9 +111,11 @@ export async function POST(request: Request) {
       throw new Error('Failed to create extraction record');
     }
 
-    // Start extraction process (in production, this would be a background job)
-    // For now, we'll do it synchronously
-    processExtraction(extraction.id, videoId, platform, url);
+    // Start extraction process in background
+    // We don't await this - it runs asynchronously
+    processExtraction(extraction.id, videoId, platform, url).catch((err) => {
+      logger.error('Background extraction failed', err, { extractionId: extraction.id });
+    });
 
     return NextResponse.json({
       data: {

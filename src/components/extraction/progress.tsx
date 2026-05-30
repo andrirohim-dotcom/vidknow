@@ -28,6 +28,7 @@ export function ExtractionProgress({ extractionId, onComplete }: ExtractionProgr
         setProgress(data.data.progress_percent);
 
         if (data.data.status === 'completed') {
+          // Don't redirect automatically, let parent handle it
           onComplete?.();
           return;
         }
