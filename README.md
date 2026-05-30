@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VidKnow
+
+A fullstack web application that extracts knowledge from YouTube, X.com, and TikTok videos, generating insightful reports for individual learners.
+
+## Features
+
+- **Knowledge Extraction**: Paste video URLs and get comprehensive knowledge reports
+- **Multi-Platform Support**: YouTube, X.com (Twitter), and TikTok
+- **Insightful Reports**: Step-by-step implementation guides, tools lists, difficulty ratings
+- **Knowledge Management**: Save, organize, and revisit extracted knowledge
+- **Multi-Profile Support**: Organize knowledge by different life areas
+- **Export**: Generate PDF and HTML reports for sharing
+- **AI-Powered**: Uses DeepSeek or OpenAI for intelligent extraction
+
+## Tech Stack
+
+- **Frontend**: Next.js 14+ (App Router), React 18+, Tailwind CSS, shadcn/ui
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime, Storage)
+- **AI**: DeepSeek API (default) / OpenAI API
+- **State**: Zustand, React Query
+- **Testing**: Vitest, Playwright, MSW
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- Docker (for Supabase)
+- npm (recommended)
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/andrirohim-dotcom/vidknow.git
+cd vidknow
+
+# Install dependencies
+npm install
+
+# Start Supabase
+npx supabase start
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copy `.env.example` to `.env.local` and configure:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 
-## Learn More
+# AI Provider (deepseek or openai)
+AI_PROVIDER=deepseek
 
-To learn more about Next.js, take a look at the following resources:
+# DeepSeek API (https://platform.deepseek.com/)
+DEEPSEEK_API_KEY=your-deepseek-api-key
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**AI Provider Options**:
+- **DeepSeek** (recommended): Use `deepseek-chat` model. Register at https://platform.deepseek.com/
+- **OpenAI**: Set `AI_PROVIDER=openai` and configure `OPENAI_API_KEY`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Development
 
-## Deploy on Vercel
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm start            # Start production server
+npm test             # Run unit tests
+npm run test:e2e     # Run e2e tests
+npm run lint         # Run ESLint
+npm run format       # Format with Prettier
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Documentation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Implementation Plan](./specs/001-knowledge-extraction/plan.md)
+- [Feature Specification](./specs/001-knowledge-extraction/spec.md)
+- [Data Model](./specs/001-knowledge-extraction/data-model.md)
+- [API Contracts](./specs/001-knowledge-extraction/contracts/api-contracts.md)
+- [Quickstart Guide](./specs/001-knowledge-extraction/quickstart.md)
+
+## License
+
+MIT

@@ -22,24 +22,116 @@ interface AnalysisResult {
   warnings: string[];
 }
 
+type AIProvider = 'openai' | 'deepseek';
+
+interface AIConfig {
+  provider: AIProvider;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
 export class AnalysisService {
-  private apiKey: string;
+  private config: AIConfig;
 
   constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY || '';
+    const provider = (process.env.AI_PROVIDER as AIProvider) || 'deepseek';
+
+    if (provider === 'deepseek') {
+      this.config = {
+        provider: 'deepseek',
+        apiKey: process.env.DEEPSEEK_API_KEY || '',
+        baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
+        model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+      };
+    } else {
+      this.config = {
+        provider: 'openai',
+        apiKey: process.env.OPENAI_API_KEY || '',
+        baseUrl: 'https://api.openai.com/v1',
+        model: process.env.OPENAI_MODEL || 'gpt-4',
+      };
+    }
   }
 
   async analyze(input: AnalysisInput): Promise<AnalysisResult> {
-    if (!this.apiKey) {
+    if (!this.config.apiKey) {
       return this.getMockAnalysis(input);
     }
 
-    // In production, call OpenAI API for analysis
-    return this.getMockAnalysis(input);
+    try {
+      return await this.callAIAnalysis(input);
+    } catch (error) {
+      console.error('AI analysis failed, falling back to mock:', error);
+      return this.getMockAnalysis(input);
+    }
+  }
+
+  private async callAIAnalysis(input: AnalysisInput): Promise<AnalysisResult> {
+    const systemPrompt = `Anda adalah ahli analisis konten pendidikan. Analisis transkrip video dan berikan:
+1. Skor relevansi (1-10) berdasarkan profil pengguna
+2. Skor kelayakan implementasi (1-10)
+3. Skor nilai (1-10)
+4. Tingkat kesulitan (pemula/menengah/lanjutan)
+5. Estimasi waktu implementasi (jam)
+6. Prasyarat
+7. Tujuan pembelajaran
+8. Peringatan atau catatan
+
+Respons dalam format JSON valid.`;
+
+    const userPrompt = `Analisis video ini:
+Judul: ${input.videoTitle}
+Transkrip: ${input.transcript.substring(0, 2000)}...
+
+${input.userProfile ? `Profil Pengguna: Minat - ${input.userProfile.interests.join(', ')}, Tingkat - ${input.userProfile.skillLevel}` : ''}
+
+Berikan analisis dalam format JSON:
+{
+  "relevanceScore": number,
+  "feasibilityScore": number,
+  "valueScore": number,
+  "difficultyLevel": "beginner" | "intermediate" | "advanced",
+  "estimatedTimeHours": number,
+  "prerequisites": string[],
+  "learningObjectives": string[],
+  "warnings": string[]
+}`;
+
+    const response = await fetch(`${this.config.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error('No content in API response');
+    }
+
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
+    return JSON.parse(jsonStr) as AnalysisResult;
   }
 
   private getMockAnalysis(input: AnalysisInput): AnalysisResult {
-    // Simple mock analysis based on content length and keywords
     const wordCount = input.transcript.split(/\s+/).length;
     const hasTechnicalTerms = /code|programming|api|database|server/i.test(input.transcript);
     const hasBeginnerTerms = /beginner|start|learn|basic|introduction/i.test(input.transcript);
@@ -103,42 +195,42 @@ export class AnalysisService {
     const prereqs: string[] = [];
 
     if (/advanced|expert|senior/i.test(input.transcript)) {
-      prereqs.push('Advanced knowledge in the field');
+      prereqs.push('Pengetahuan lanjutan di bidang ini');
     }
     if (/code|programming|api/i.test(input.transcript)) {
-      prereqs.push('Basic programming knowledge');
+      prereqs.push('Dasar-dasar pemrograman');
     }
     if (/database|sql|query/i.test(input.transcript)) {
-      prereqs.push('Database fundamentals');
+      prereqs.push('Dasar-dasar basis data');
     }
 
-    return prereqs.length > 0 ? prereqs : ['No specific prerequisites'];
+    return prereqs.length > 0 ? prereqs : ['Tidak ada prasyarat khusus'];
   }
 
   private extractObjectives(input: AnalysisInput): string[] {
     const objectives: string[] = [];
 
     if (/learn|understand/i.test(input.videoTitle)) {
-      objectives.push('Understand core concepts');
+      objectives.push('Memahami konsep-konsep kunci');
     }
     if (/build|create|implement/i.test(input.videoTitle)) {
-      objectives.push('Build practical skills');
+      objectives.push('Membangun keterampilan praktis');
     }
     if (/tutorial|guide|how/i.test(input.videoTitle)) {
-      objectives.push('Follow step-by-step instructions');
+      objectives.push('Mengikuti langkah-langkah panduan');
     }
 
-    return objectives.length > 0 ? objectives : ['Gain new knowledge and skills'];
+    return objectives.length > 0 ? objectives : ['Memperoleh pengetahuan dan keterampilan baru'];
   }
 
   private extractWarnings(input: AnalysisInput): string[] {
     const warnings: string[] = [];
 
     if (/deprecated|outdated|old/i.test(input.transcript)) {
-      warnings.push('Content may contain outdated information');
+      warnings.push('Konten mungkin berisi informasi yang sudah usang');
     }
     if (/complex|difficult|advanced/i.test(input.transcript)) {
-      warnings.push('This is advanced content - take your time');
+      warnings.push('Ini adalah konten lanjutan - ambil waktu yang cukup');
     }
 
     return warnings;
