@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { videoParser } from '@/lib/video/parser';
+import type { Profile } from '@/types';
 
 interface UrlInputProps {
   onExtract: (url: string, profileId: string) => void;
@@ -9,9 +11,44 @@ interface UrlInputProps {
 }
 
 export function UrlInput({ onExtract, disabled }: UrlInputProps) {
+  const supabase = createClient();
   const [url, setUrl] = useState('');
   const [profileId, setProfileId] = useState('');
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchProfiles();
+  }, []);
+
+  const fetchProfiles = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false })
+        .order('name', { ascending: true });
+
+      if (fetchError) throw fetchError;
+
+      setProfiles(data || []);
+
+      // Auto-select default profile
+      const defaultProfile = data?.find(p => p.is_default);
+      if (defaultProfile) {
+        setProfileId(defaultProfile.id);
+      }
+    } catch (err) {
+      console.error('Error fetching profiles:', err);
+    } finally {
+      setIsLoadingProfiles(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,12 +105,26 @@ export function UrlInput({ onExtract, disabled }: UrlInputProps) {
           id="profile"
           value={profileId}
           onChange={(e) => setProfileId(e.target.value)}
-          disabled={disabled}
+          disabled={disabled || isLoadingProfiles}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
         >
-          <option value="">Select a profile</option>
-          <option value="default">Default Profile</option>
+          <option value="">
+            {isLoadingProfiles ? 'Loading profiles...' : 'Select a profile'}
+          </option>
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>
+              {profile.name} {profile.is_default ? '(Default)' : ''}
+            </option>
+          ))}
         </select>
+        {!isLoadingProfiles && profiles.length === 0 && (
+          <p className="mt-1 text-sm text-gray-500">
+            No profiles found.{' '}
+            <a href="/profiles" className="text-indigo-600 hover:text-indigo-800">
+              Create one
+            </a>
+          </p>
+        )}
       </div>
 
       {error && (
@@ -82,7 +133,7 @@ export function UrlInput({ onExtract, disabled }: UrlInputProps) {
 
       <button
         type="submit"
-        disabled={disabled}
+        disabled={disabled || isLoadingProfiles}
         className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
         {disabled ? 'Extracting...' : 'Extract Knowledge'}
