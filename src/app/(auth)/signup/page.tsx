@@ -21,8 +21,8 @@ export default function SignupPage() {
     setError(null);
 
     try {
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Create auth user - trigger will auto-create profile
+      const { error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -33,32 +33,6 @@ export default function SignupPage() {
       });
 
       if (authError) throw authError;
-
-      // 2. Create user profile in database
-      if (authData.user) {
-        const { error: profileError } = await supabase.from('users').insert({
-          id: authData.user.id,
-          email: authData.user.email!,
-          full_name: fullName,
-        });
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          // Don't throw - user is created, profile can be created later
-        }
-
-        // 3. Create default profile
-        const { error: defaultProfileError } = await supabase.from('profiles').insert({
-          user_id: authData.user.id,
-          name: 'Default',
-          is_default: true,
-          color: '#6366f1',
-        });
-
-        if (defaultProfileError) {
-          console.error('Default profile creation error:', defaultProfileError);
-        }
-      }
 
       setSuccess(true);
       setTimeout(() => {
